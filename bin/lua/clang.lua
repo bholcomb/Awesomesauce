@@ -315,7 +315,7 @@ ffi.cdef[[
    };
    typedef void *CXClientData;
    typedef enum CXChildVisitResult (*CXCursorVisitor)(CXCursor cursor, CXCursor parent, CXClientData client_data);
-   typedef enum CXChildVisitResult (*CXCursorVisitor2)(void* cursor, void* parent, CXClientData client_data);
+   typedef enum CXChildVisitResult (*CXCursorVisitor2)(CXCursor* cursor, CXCursor* parent, CXClientData client_data);
    unsigned clang_visitChildren(CXCursor parent, CXCursorVisitor visitor, CXClientData client_data);
    CXString clang_getCursorSpelling(CXCursor);
    CXString clang_getCursorDisplayName(CXCursor);
@@ -623,11 +623,10 @@ function createCursorVisitor(storage)
    local ret = storage
 
    return function(cursorPtr, parentPtr, usr)
-      local cptr =  ffi.cast("CXCursor *", ffi.new("char[?]", ffi.sizeof("CXCursor"))) --allocate some memory for the cursor
-      ffi.copy(cptr, cursorPtr, ffi.sizeof("CXCursor")) --copy the memory from the first parameter to the chunk we just allocated
-      local cursor = createCursor(cptr[0]) --create a cursor from the object pointed to by our pointer
-      table.insert(ret, cursor)
-   
+      local c = ffi.new("CXCursor", cursorPtr[0]) --create a copy from the passed in pointer
+      local cursor = createCursor(c) --create a lua version
+      table.insert(ret, cursor) --add to the list children to be returned at the end
+      
       return lib.CXChildVisit_Continue
    end
 end
@@ -637,7 +636,7 @@ function clang_cursor.children(self)
    local ret = {}
    local cursorVisitor = createCursorVisitor(ret)
    
-   local cb = ffi.cast("CXCursorVisitor2", cursorVisitor) --this uses our bejanked function definition that uses void* instead of the structs.  We copy the memory to a struct in the callback
+   local cb = ffi.cast("CXCursorVisitor2", cursorVisitor) --this uses our bejanked function definition that uses CXCursor* instead of the actual structs.  In the callback we copy from the stack to a heap allocated object
    lib.clang_visitChildren(cptr, cb, nil)
    cb:free()
    
