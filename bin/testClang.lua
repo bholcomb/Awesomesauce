@@ -32,6 +32,7 @@ print("dumping clang")
 dump(clang)
 print("-----")
 
+
 print("dumping index")
 index = clang.createIndex(false, true)
 dump(index)
@@ -44,10 +45,20 @@ print("-----")
 
 function printCursor(cur, i)
    i = i or 0
+   if(cur:kind() == clang.cursor.ClassDecl) then
+      print("-------Class declaration------")
+   end
    local space = string.rep(" ", i)
    print(space.."kind: "..tostring(cur:kind()))
    print(space.."name: "..tostring(cur:name()))
    print(space.."displayName: "..tostring(cur:displayName()))
+   local t = cur:type()
+   if(t ~= nil) then
+      print(space.."cursor type: "..tostring(t))
+      print(space.."type cananical: "..tostring(t:canonical()))
+   else
+      print(space.."invalid cursor type")
+   end
    print(space.."location: ")
    dump(cur:location())
    local children = cur:children()
